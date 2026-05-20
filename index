@@ -3,24 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Species & GPS Data Tracker</title>
+    <title>LRW BioBlitz Data Collector</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
-            --primary: #2e7d32;
-            --primary-hover: #1b5e20;
-            --dark: #333;
-            --light: #f5f5f5;
+            --ncstate-red: #cc0000; /* Matching local university vibes */
+            --forest-green: #1b5e20;
+            --dark: #222;
+            --light: #f9f9f9;
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
             margin: 0;
             padding: 20px;
             background-color: var(--light);
             color: var(--dark);
         }
+        header {
+            text-align: center;
+            background-color: var(--forest-green);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        header h1 { margin: 0; font-size: 2rem; letter-spacing: 1px; }
+        header p { margin: 5px 0 0 0; opacity: 0.9; font-size: 1.1rem; }
+        
         .container {
-            max-width: 1100px;
+            max-width: 1200px;
             margin: 0 auto;
             display: grid;
             grid-template-columns: 1fr 2fr;
@@ -33,100 +45,87 @@
             background: white;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
-        h1 { margin-top: 0; color: var(--primary); font-size: 1.5rem; }
-        /* Form styling */
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
+        h2 { margin-top: 0; color: var(--forest-green); font-size: 1.3rem; border-bottom: 2px solid #eee; padding-bottom: 5px;}
+        
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
         input[type="text"], input[type="number"] {
             width: 100%;
-            padding: 8px;
+            padding: 10px;
             border: 1px solid #ccc;
             border-radius: 4px;
             box-sizing: border-box;
         }
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
         button {
             flex: 1;
-            background-color: var(--primary);
+            background-color: var(--forest-green);
             color: white;
             border: none;
-            padding: 10px;
+            padding: 12px;
             border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
+            font-size: 0.95rem;
         }
-        button:hover { background-color: var(--primary-hover); }
+        button:hover { background-color: #0b3d11; }
         button.secondary { background-color: #555; }
         button.secondary:hover { background-color: #333; }
-        /* Map and Table styling */
+        
         #map {
-            height: 400px;
+            height: 450px;
             border-radius: 8px;
             margin-bottom: 20px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border: 1px solid #ccc;
         }
-        .table-wrapper {
-            overflow-x: auto;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        th, td {
-            padding: 10px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        th { background-color: #eee; }
+        .table-wrapper { overflow-x: auto; max-height: 200px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f2f2f2; position: sticky; top: 0; }
     </style>
 </head>
 <body>
 
+<header>
+    <h1>LRW_BioBlitz</h1>
+    <p>Collection of species data in Lake Raleigh Woods on June 4, 2026</p>
+</header>
+
 <div class="container">
     <div class="panel">
-        <h1>Log Species Observation</h1>
+        <h2>Log Observation</h2>
         <form id="speciesForm">
             <div class="form-group">
-                <label purchasers for="species">Species Name:</label>
-                <input type="text" id="species" required placeholder="e.g., Monarch Butterfly">
+                <label for="species">Species Name:</label>
+                <input type="text" id="species" required placeholder="e.g., Loblolly Pine, Green Tree Frog">
             </div>
             <div class="form-group">
-                <label purchasers for="lat">Latitude (GPS):</label>
-                <input type="number" id="lat" step="any" required placeholder="e.g., 35.7796">
+                <label for="lat">Latitude (GPS):</label>
+                <input type="number" id="lat" step="any" required placeholder="Click map or use GPS button">
             </div>
             <div class="form-group">
-                <label purchasers for="lng">Longitude (GPS):</label>
-                <input type="number" id="lng" step="any" required placeholder="e.g., -78.6382">
+                <label for="lng">Longitude (GPS):</label>
+                <input type="number" id="lng" step="any" required placeholder="Click map or use GPS button">
             </div>
             <div class="btn-group">
-                <button type="button" class="secondary" id="getLocationBtn">Get My Location</button>
-                <button type="submit">Save Point</button>
+                <button type="button" class="secondary" id="getLocationBtn">Use My Current GPS</button>
+                <button type="submit">Log Species</button>
             </div>
         </form>
 
-        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+        <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
         
-        <h2>Export Data</h2>
-        <button id="exportBtn" class="secondary" style="width: 100%;">Download CSV</button>
+        <h2>Export Session Data</h2>
+        <button id="exportBtn" class="secondary" style="width: 100%;">Download BioBlitz CSV</button>
     </div>
 
     <div>
         <div id="map"></div>
         <div class="panel">
-            <h2>Recorded Observations</h2>
+            <h2>Field Log History</h2>
             <div class="table-wrapper">
                 <table id="dataTable">
                     <thead>
@@ -146,33 +145,40 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // Global array to store data in memory
     let dataRecords = [];
 
-    // Initialize the Map (centered on a default location)
-    const map = L.map('map').setView([20, 0], 2); 
+    // Initialize map exactly over Lake Raleigh Woods, NC (~35.7655, -78.6810)
+    const map = L.map('map').setView([35.7655, -78.6810], 15); 
+    
+    // Use an outdoor/terrain friendly style for a BioBlitz
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Browser Geolocation Functionality
+    // Allow user to click anywhere on the map to automatically drop coordinates into the form
+    map.on('click', function(e) {
+        document.getElementById('lat').value = e.latlng.lat.toFixed(6);
+        document.getElementById('lng').value = e.latlng.lng.toFixed(6);
+    });
+
+    // Mobile/Field GPS targeting 
     document.getElementById('getLocationBtn').addEventListener('click', () => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition((position) => {
-                document.getElementById('lat').value = position.coords.latitude.toFixed(6);
-                document.getElementById('lng').value = position.coords.longitude.toFixed(6);
-                
-                // Pan map to current location
-                map.setView([position.coords.latitude, position.coords.longitude], 13);
+                const lat = position.coords.latitude.toFixed(6);
+                const lng = position.coords.longitude.toFixed(6);
+                document.getElementById('lat').value = lat;
+                document.getElementById('lng').value = lng;
+                map.setView([lat, lng], 17);
             }, (error) => {
-                alert("Error grabbing location: " + error.message);
+                alert("GPS Signal Error: " + error.message);
             });
         } else {
-            alert("Geolocation is not supported by this browser.");
+            alert("Your browser doesn't support active GPS location tracking.");
         }
     });
 
-    // Handle Form Submission
+    // Handle data submission
     document.getElementById('speciesForm').addEventListener('submit', (e) => {
         e.preventDefault();
         
@@ -183,40 +189,37 @@
         const record = { species, lat, lng };
         dataRecords.push(record);
 
-        // Add Marker to Map
+        // Drop a pin on the map
         L.marker([lat, lng]).addTo(map)
             .bindPopup(`<b>${species}</b><br>Lat: ${lat}<br>Lng: ${lng}`)
             .openPopup();
 
-        // Pan map to new marker
-        map.setView([lat, lng], 10);
-
-        // Add to UI Table
+        // Update display table
         const tbody = document.querySelector('#dataTable tbody');
         const row = document.createElement('tr');
-        row.innerHTML = `<td>${species}</td><td>${lat}</td><td>${lng}</td>`;
-        tbody.appendChild(row);
+        row.innerHTML = `<td><b>${species}</b></td><td>${lat}</td><td>${lng}</td>`;
+        tbody.prepend(row); // Most recent entries show at the top
 
-        // Reset form
+        // Reset text boxes but keep map focused
         document.getElementById('speciesForm').reset();
     });
 
-    // Handle CSV Export
+    // CSV Download engine
     document.getElementById('exportBtn').addEventListener('click', () => {
         if (dataRecords.length === 0) {
-            alert("No data to export yet!");
+            alert("No species have been logged to export yet!");
             return;
         }
 
-        let csvContent = "data:text/csv;charset=utf-8,Species,Latitude,Longitude\n";
+        let csvContent = "data:text/csv;charset=utf-8,Event,Species,Latitude,Longitude\n";
         dataRecords.forEach(r => {
-            csvContent += `"${r.species.replace(/"/g, '""')}",${r.lat},${r.lng}\n`;
+            csvContent += `"LRW_BioBlitz","${r.species.replace(/"/g, '""')}",${r.lat},${r.lng}\n`;
         });
 
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "species_data.csv");
+        link.setAttribute("download", "LRW_BioBlitz_Data_June4.csv");
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
