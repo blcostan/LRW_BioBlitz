@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Species & GPS Data Tracker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --primary: #2e7d32;
+            --primary-hover: #1b5e20;
+            --dark: #333;
+            --light: #f5f5f5;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--light);
+            color: var(--dark);
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; }
+        }
+        .panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { margin-top: 0; color: var(--primary); font-size: 1.5rem; }
+        /* Form styling */
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        button {
+            flex: 1;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { background-color: var(--primary-hover); }
+        button.secondary { background-color: #555; }
+        button.secondary:hover { background-color: #333; }
+        /* Map and Table styling */
+        #map {
+            height: 400px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .table-wrapper {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th { background-color: #eee; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="panel">
+        <h1>Log Species Observation</h1>
+        <form id="speciesForm">
+            <div class="form-group">
+                <label purchasers for="species">Species Name:</label>
+                <input type="text" id="species" required placeholder="e.g., Monarch Butterfly">
+            </div>
+            <div class="form-group">
+                <label purchasers for="lat">Latitude (GPS):</label>
+                <input type="number" id="lat" step="any" required placeholder="e.g., 35.7796">
+            </div>
+            <div class="form-group">
+                <label purchasers for="lng">Longitude (GPS):</label>
+                <input type="number" id="lng" step="any" required placeholder="e.g., -78.6382">
+            </div>
+            <div class="btn-group">
+                <button type="button" class="secondary" id="getLocationBtn">Get My Location</button>
+                <button type="submit">Save Point</button>
+            </div>
+        </form>
+
+        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+        
+        <h2>Export Data</h2>
+        <button id="exportBtn" class="secondary" style="width: 100%;">Download CSV</button>
+    </div>
+
+    <div>
+        <div id="map"></div>
+        <div class="panel">
+            <h2>Recorded Observations</h2>
+            <div class="table-wrapper">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>Species</th>
+                            <th>Latitude</th>
+                            <th>Longitude</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // Global array to store data in memory
+    let dataRecords = [];
+
+    // Initialize the Map (centered on a default location)
+    const map = L.map('map').setView([20, 0], 2); 
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Browser Geolocation Functionality
+    document.getElementById('getLocationBtn').addEventListener('click', () => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((position) => {
+                document.getElementById('lat').value = position.coords.latitude.toFixed(6);
+                document.getElementById('lng').value = position.coords.longitude.toFixed(6);
+                
+                // Pan map to current location
+                map.setView([position.coords.latitude, position.coords.longitude], 13);
+            }, (error) => {
+                alert("Error grabbing location: " + error.message);
+            });
+        } else {
+            alert("Geolocation is not supported by this browser.");
+        }
+    });
+
+    // Handle Form Submission
+    document.getElementById('speciesForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const species = document.getElementById('species').value;
+        const lat = parseFloat(document.getElementById('lat').value);
+        const lng = parseFloat(document.getElementById('lng').value);
+
+        const record = { species, lat, lng };
+        dataRecords.push(record);
+
+        // Add Marker to Map
+        L.marker([lat, lng]).addTo(map)
+            .bindPopup(`<b>${species}</b><br>Lat: ${lat}<br>Lng: ${lng}`)
+            .openPopup();
+
+        // Pan map to new marker
+        map.setView([lat, lng], 10);
+
+        // Add to UI Table
+        const tbody = document.querySelector('#dataTable tbody');
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${species}</td><td>${lat}</td><td>${lng}</td>`;
+        tbody.appendChild(row);
+
+        // Reset form
+        document.getElementById('speciesForm').reset();
+    });
+
+    // Handle CSV Export
+    document.getElementById('exportBtn').addEventListener('click', () => {
+        if (dataRecords.length === 0) {
+            alert("No data to export yet!");
+            return;
+        }
+
+        let csvContent = "data:text/csv;charset=utf-8,Species,Latitude,Longitude\n";
+        dataRecords.forEach(r => {
+            csvContent += `"${r.species.replace(/"/g, '""')}",${r.lat},${r.lng}\n`;
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "species_data.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+</script>
+</body>
+</html>
